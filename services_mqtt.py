@@ -13,7 +13,7 @@ class MQTTMessage(BaseModel):
 
 logger = logging.getLogger(__name__)
 
-MQTT_BROKER = "192.168.0.112"
+MQTT_BROKER = "192.168.0.110"
 MQTT_PORT = 1883
 MQTT_TOPIC_CONTROL_BASE = "generador/control"
 MQTT_TOPIC_COMBUSTIBLE = "generador/combustible"

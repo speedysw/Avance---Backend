@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
 ## Importar funciones
@@ -6,6 +6,9 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 import json
+from io import StringIO
+import pandas as pd
+
 
 ## Importar modelos de las BD
 import BD.models as models
@@ -149,6 +152,42 @@ async def datos_radares(db: Session = Depends(get_db)):
         }
         for sensor in ultimos_sensores
     ]
+
+@router.get("/export/csv")
+async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final: Optional[str] = None,db: Session = Depends(get_db)):
+    query = db.query(models.HistorialRadar).filter(models.HistorialRadar.id_radar == radar)
+
+    if fecha_inicio and fecha_final:
+        try:
+            start_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            end_dt = datetime.strptime(fecha_final, "%Y-%m-%d") + timedelta(days=1)
+        except ValueError:
+            return {"error": "El formato de las fechas debe ser YYYY-MM-DD"}
+
+        query = query.filter(
+            and_(
+                models.HistorialRadar.fecha >= start_dt,
+                models.HistorialRadar.fecha < end_dt
+            )
+        )
+
+    datos = query.all()
+    datos = query.all()
+    data_list = [d.__dict__ for d in datos]
+    # Eliminar atributos internos (como _sa_instance_state)
+    for item in data_list:
+        item.pop("_sa_instance_state", None)
+    df = pd.DataFrame(data_list)
+
+    
+    # Escribir en un objeto BytesIO
+    csv_stream = StringIO()
+    df.to_csv(csv_stream, index=False)
+    response = Response(content=csv_stream.getvalue(), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=datos.csv"
+    return response
+
+
 
 #--------------------------#
 #---- ENDPOINTS - POST ----#
