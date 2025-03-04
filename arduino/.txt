@@ -1,0 +1,184 @@
+#include <SPI.h>
+#include <Ethernet.h>
+
+int pinflot = A0; // pin conectado al flotador (sensor de combustible)
+int binflot; // valor binario del flotador
+float combustible; // porcentaje de combustible en el estanque
+unsigned long last_read = 0;  
+byte mac[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // dirección MAC
+IPAddress ip(192,168,1,156); // dirección IP del Arduino
+EthernetServer server(80); // puerto HTTP
+
+// Información del servidor intermediario (donde se enviarán los datos)
+char HOST_NAME[] = "192.168.1.100";  // Cambia esto por la IP de tu servidor intermedio
+int HTTP_PORT = 8000;
+String PATH_NAME = "/sensores/"; // Ruta del script en el servidor intermedio
+String queryString = "?combustible=0"; // Parámetro de combustible
+
+void setup() {
+  pinMode(pinflot, INPUT);
+  Serial.begin(9600);
+  
+  // Iniciar la conexión Ethernet
+  Ethernet.begin(mac, ip);  
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield no presente :");
+    while (true) {}
+  }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("El cable Ethernet no está conectado o está defectuoso.");
+  }
+  
+  server.begin(); // Iniciar el servidor
+  Serial.println("Servidor iniciado. Detectando conexiones entrantes...");
+}
+
+void loop() {
+  if ( millis() - last_read > 5000) { // actualizar cada 5 segundos
+    binflot = analogRead(pinflot); // leer el valor binario del flotador
+    combustible = 100.0 * binflot / 1023.0; // convertir a porcentaje
+    last_read = millis();
+
+    // Enviar los datos al servidor intermedio
+    sendFuelDataToServer(combustible);
+  }
+
+  EthernetClient client = server.available();  // escuchar a los clientes
+  if (client) {
+    handleClient(client); // manejar la solicitud del cliente
+  }
+}
+
+// Función para enviar los datos de combustible al servidor intermedio
+void sendFuelDataToServer(float combustible) {
+  EthernetClient client;
+  
+  // Construir la cadena de consulta con el valor de combustible
+  postData = "?combustible=" + String(combustible, 1); // agregar el valor de combustible como parámetro
+
+  // Conectar al servidor intermedio
+  if (client.connect(HOST_NAME, HTTP_PORT)) {
+    Serial.println("Conectado al servidor intermedio");
+
+    // Enviar la solicitud HTTP GET al servidor intermedio
+    client.println("POST " + PATH_NAME + " HTTP/1.1");
+    client.println("Host: " + String(HOST_NAME));
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println("Content-Length: " + String(postData.length()));
+    client.println();  // Fin de los encabezados HTTP
+    client.println(postData);  // Enviar los datos JSON
+
+    // Esperar la respuesta del servidor
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        Serial.print(c);  // imprimir la respuesta del servidor
+      }
+    }
+
+    // Detener la conexión
+    client.stop();
+    Serial.println("Desconectado del servidor intermedio");
+  } else {
+    Serial.println("No se pudo conectar al servidor intermedio");
+  }
+}
+
+void handleClient(EthernetClient client) {
+  Serial.print("Nuevo cliente conectado desde ");
+  Serial.println(client.remoteIP());
+
+  boolean currentLineIsBlank = true;
+  while (client.connected()) {
+    if (client.available()) {
+      char c = client.read();
+      if (c == '\n' && currentLineIsBlank) {
+        sendHttpResponse(client); // enviar la respuesta HTTP al cliente
+        break;
+      }
+      if (c == '\n') {
+        currentLineIsBlank = true;
+      } else if (c != '\r') {
+        currentLineIsBlank = false;
+      }
+    }
+  }
+  delay(1);
+  client.stop();
+  Serial.println("Cliente desconectado");
+}
+
+void sendHttpResponse(EthernetClient client) {
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Connection: close");
+  client.println("Refresh: 5");
+  client.println();
+  client.println("<!DOCTYPE HTML>");
+  client.println("<html lang='es'>");
+  client.println("<head>");
+  client.println("<title>Nivel de Combustible</title>");
+  client.println("<style>body { font-family: Arial; text-align: center; }</style>");
+  client.println("</head>");
+  client.println("<body>");
+  client.println("<h1>Nivel de Combustible</h1>");
+  client.print("<p>Combustible: <b>");
+  client.print(combustible, 1);
+  client.println("%</b></p>");
+  client.println("</body></html>");
+}
+
+
+
+@app.post("/sensores/")
+def agregar_arduino(radar: schemas.SensorSchema, db: Session = Depends(get_db)):
+    try:
+        logger.debug(f"Datos recibidos: {radar}")
+        nuevo_sensor = models.Sensores(**radar.dict(), timestamp=datetime.now())
+        db.add(nuevo_sensor)
+        db.commit()
+        db.refresh(nuevo_sensor)
+        return nuevo_sensor
+    except ValidationError as e:
+        logger.error(f"Error de validación: {str(e)}")
+        raise HTTPException(status_code=422, detail="Datos de entrada inválidos")
+    except Exception as e:
+        logger.error(f"Error al procesar la solicitud: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.post("/radar/")
+def agregar_sensor(radar: schemas.RadarResponse, db: Session = Depends(get_db)):
+    try:
+        # Crear una nueva instancia de Radar
+        radar_data = radar.dict()
+        nuevo_sensor = models.Radar(**radar_data)
+        
+        # Agregar y guardar en la base de datos
+        db.add(nuevo_sensor)
+        db.commit()
+        db.refresh(nuevo_sensor)
+        
+        return nuevo_sensor
+    except Exception as e:
+        # Deshacer la transacción en caso de error
+        db.rollback()
+        # Registrar el error en los logs (opcional)
+        print(f"Error: {str(e)}")
+        # Devolver un mensaje de error
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+  
+  @app.get("/sensores/last_date")
+def ultimo_dato(db: Session = Depends(get_db)):
+    ultimo_sensor = db.query(models.HistorialRadar).order_by(models.HistorialRadar.fecha.desc()).first()
+    
+    if ultimo_sensor is None:
+        return {"error": "No se encontraron datos"}
+    
+    return {
+        "id": ultimo_sensor.id_radar,
+        "combustible": ultimo_sensor.combustible,
+        "estado": ultimo_sensor.estado,
+        "fecha": ultimo_sensor.fecha.isoformat() if ultimo_sensor.fecha else None
+    }
