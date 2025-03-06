@@ -31,3 +31,9 @@ class Virtual(Base):
     umbral = Column(Float, nullable=True)
     combustible = Column(Float)
     vinculacion = Column(Boolean)
+
+class User(Base):
+    __tablename__="usuario"
+    username = Column(String(100), primary_key=True)
+    nombre = Column(String(100))
+    password = Column(String(100))

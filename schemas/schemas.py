@@ -57,3 +57,8 @@ class VirtualUpdate(BaseModel):
     nombre: Optional[str] = None
     volumen: Optional[float] = None
     umbral: Optional[float] = None
+
+class User(BaseModel):
+    username: str
+    nombre: str
+    password: str

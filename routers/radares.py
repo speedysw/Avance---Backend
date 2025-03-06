@@ -259,14 +259,17 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
     )
 
     if db_radar is None:
+        
         return {"error": f"No se encontraron datos para el radar {id_radar}"}
-
-    # Actualizar estado en la BD
-    db_radar.estado = data.estado
-    db.add(db_radar)
+    nuevo_historial = models.HistorialRadar(
+        id_radar=id_radar,
+        combustible=db_radar.combustible,  # o algún valor si es necesario
+        estado=data.estado,
+        fecha=datetime.now()
+    )
+    db.add(nuevo_historial)
     db.commit()
-    db.refresh(db_radar)
-
+    db.refresh(nuevo_historial)
     # Preparar mensaje MQTT
     payload = json.dumps({"id_sensor": id_radar, "estado": data.estado})
 
