@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    container_name: mi_api
+    depends_on:
+      - postgres
+      - mosquitto
+    environment:
+      - SQL_DB_URL=postgresql://admin:admin@postgres:5432/BD
+      - MQTT_BROKER=mosquitto
+    ports:
+      - "8000:8000"
+
+  postgres:
+    image: postgres:latest
+    container_name: mi_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: BD
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    # Si deseas personalizar la configuración, monta un volumen con tu archivo mosquitto.conf:
+    # volumes:
+    #   - ./mosquitto_config:/mosquitto/config
+
+volumes:
+  pgdata:
