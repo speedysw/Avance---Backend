@@ -37,3 +37,4 @@ class User(Base):
     username = Column(String(100), primary_key=True)
     nombre = Column(String(100))
     password = Column(String(100))
+    rol = Column(Integer, default=0)

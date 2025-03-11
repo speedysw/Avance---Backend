@@ -14,6 +14,7 @@ import pandas as pd
 import BD.models as models
 import schemas.schemas as schemas
 from BD.database import get_db, get_columns
+from .autenticacion import get_current_user, require_role
 
 ## Funciones MQTT
 from services_mqtt import publish_message, MQTT_TOPIC_CONTROL_BASE 
@@ -195,7 +196,7 @@ async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final
 
 
 @router.post("/agregar_radares")
-async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db)):
+async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db),  current_user: models.User = Depends(require_role(1))):
 
     # Verifica si el radar ya existe
     db_radar = db.query(models.Radar).filter(models.Radar.id_radar == radar.id_radar).first()
@@ -296,7 +297,7 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
 #-------------------------#
 
 @router.put("/radares/{id_radar}")
-async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = Depends(get_db)):
+async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(1))):
     # Buscar el radar a actualizar
     db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
     if db_radar is None:
@@ -354,11 +355,17 @@ async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = 
 #----------------------------#
 
 @router.delete("/radares/{id_radar}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_radar(id_radar: str, db: Session = Depends(get_db)):
+def delete_radar(id_radar: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(1))):
+    print(f"Intentando borrar radar: {id_radar}")
     db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
+    print(f"Resultado de búsqueda: {db_radar}")
     if db_radar is None:
         raise HTTPException(status_code=404, detail=f"No se encontró el radar con id {id_radar}")
+
+    # Eliminar la entrada en Virtual
     db.query(models.Virtual).filter(models.Virtual.id_vinculacion == id_radar).delete()
+    
+    # Eliminar el radar
     db.delete(db_radar)
     db.commit()
     return

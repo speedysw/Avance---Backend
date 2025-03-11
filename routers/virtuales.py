@@ -6,6 +6,7 @@ import BD.models as models
 import BD.database as database 
 import schemas.schemas as schemas
 from BD.database import get_db
+from .autenticacion import get_current_user, require_role
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def datos_virtuales(db: Session = Depends(get_db)):
 #--------------------------#
 
 @router.post("/create/radar_virtual")
-async def create_virtual(virtual: schemas.Virtuales, db: Session = Depends(get_db)):
+async def create_virtual(virtual: schemas.Virtuales, db: Session = Depends(get_db),  current_user: models.User = Depends(require_role(1))):
     db_virtual = models.Virtual(
         nombre=virtual.nombre,
         id_vinculacion=virtual.id_vinculacion,
@@ -42,7 +43,7 @@ async def create_virtual(virtual: schemas.Virtuales, db: Session = Depends(get_d
 #-------------------------#
 
 @router.put("/virtuales/{id_registro}")
-def update_radar_virtual(id_registro: int, virtual: schemas.VirtualUpdate, db: Session = Depends(get_db)):
+def update_radar_virtual(id_registro: int, virtual: schemas.VirtualUpdate, db: Session = Depends(get_db),  current_user: models.User = Depends(require_role(1))):
     # Buscar el radar a actualizar
     db_virtual = db.query(models.Virtual).filter(models.Virtual.id_registro == id_registro).first()
     if db_virtual is None:
@@ -64,7 +65,7 @@ def update_radar_virtual(id_registro: int, virtual: schemas.VirtualUpdate, db: S
 #----------------------------#
 
 @router.delete("/virtuales/{id_registro}")
-def delete_virtual(id_registro: int, db: Session = Depends(get_db)):
+def delete_virtual(id_registro: int, db: Session = Depends(get_db),  current_user: models.User = Depends(require_role(1))):
     db_radar = db.query(models.Virtual).filter(models.Virtual.id_registro == id_registro).first()
     if db_radar is None:
         raise HTTPException(status_code=404, detail=f"No se encontró el radar con la id {id_registro}")

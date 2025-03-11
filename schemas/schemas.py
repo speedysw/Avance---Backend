@@ -62,3 +62,4 @@ class User(BaseModel):
     username: str
     nombre: str
     password: str
+    rol: int
