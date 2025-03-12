@@ -251,20 +251,36 @@ async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db
 
 @router.put("/switch/temporizador/{id_radar}")
 async def change_switch_temp(id_radar: str, data: schemas.TemporizadorUpdate, db: Session = Depends(get_db)):
-    # Buscar el último estado del radar en la BD
+    # Buscar el radar en la tabla radar
     db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
     if db_radar is None:
         raise HTTPException(status_code=404, detail=f"No se encontró el radar con id {id_radar}")
+    
+    # Actualizar timerActive y estado en la tabla radar
     db_radar.timerActive = data.timerActive
-    # Actualizar el estado que corresponda
-    # ...
+    #db_radar.estado = data.estado
     db.add(db_radar)
     db.commit()
     db.refresh(db_radar)
 
+    # Consultar el último registro en historial_radar para este radar y actualizar su estado
+    db_historial = (
+        db.query(models.HistorialRadar)
+        .filter(models.HistorialRadar.id_radar == id_radar)
+        .order_by(models.HistorialRadar.fecha.desc())
+        .first()
+    )
+    if db_historial:
+        db_historial.estado = data.estado
+        db.add(db_historial)
+        db.commit()
+        db.refresh(db_historial)
+    else:
+        # Opcional: crear un registro en historial si no existe alguno
+        pass
+
     # Preparar mensaje MQTT
     payload = json.dumps({"id_sensor": id_radar, "estado": data.estado})
-
     topic = MQTT_TOPIC_CONTROL_BASE + "/" + id_radar
     print(topic)
     try:
@@ -272,7 +288,7 @@ async def change_switch_temp(id_radar: str, data: schemas.TemporizadorUpdate, db
         publish_message(topic, payload)
         return {
             "message": "Switch changed",
-            "estado": db_radar.estado,
+            "estado": db_historial.estado,
             "mqtt_payload": payload,
             "topic": topic
         }
@@ -281,6 +297,7 @@ async def change_switch_temp(id_radar: str, data: schemas.TemporizadorUpdate, db
             status_code=500,
             detail=f"Error al enviar mensaje MQTT: {str(e)}"
         )
+
 
 
 @router.post("/switch/{id_radar}")
