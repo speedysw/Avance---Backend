@@ -6,9 +6,11 @@ from sqlalchemy.orm import relationship
 class Radar(Base):
     __tablename__ = "radar"
     id_radar = Column(String(255), primary_key=True)
-    nombre = Column(String(100), nullable=True)   # Nuevo campo
+    nombre = Column(String(100), nullable=True)
     volumen = Column(Float, nullable=True) 
     umbral = Column(Float, nullable=True)
+    duration = Column(Integer, nullable=True)
+    timerActive = Column(Boolean, nullable=False)
     # Relación con RadarHistorico
     historico = relationship("HistorialRadar", back_populates="radar", cascade="all, delete") 
 

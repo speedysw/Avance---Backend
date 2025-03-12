@@ -63,12 +63,16 @@ def process_message(payload: MQTTMessage):
                 new_nombre = "Default Radar"
                 new_volumen = 100.0
                 new_umbral = 0.0
-
+                new_duration = 0
+                new_timerActive = False 
             db_radar = models.Radar(
                 id_radar=payload.id_sensor,
                 nombre=new_nombre,
                 volumen=new_volumen,
-                umbral=new_umbral
+                umbral=new_umbral,
+                duration=new_duration,
+                timerActive=new_timerActive
+                
             )
             db.add(db_radar)
             db.commit()

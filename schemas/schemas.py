@@ -16,6 +16,8 @@ class RadarResponse(BaseModel):
     nombre: Optional[str]   # Nuevo campo
     volumen: Optional[float]  # Nuevo campo
     umbral: Optional[float]
+    duration: int = 0  # Nuevo campo
+    timerActive: bool = False # Nuevo campo
     historico: List[HistorialRadarResponse]
     class Config:
         from_attributes = True  # Habilita la compatibilidad con ORM
@@ -43,6 +45,8 @@ class RadarUpdate(BaseModel):
     nombre: Optional[str] = None
     volumen: Optional[float] = None
     umbral: Optional[float] = None
+    duration: Optional[int]  # Nuevo campo
+    timerActive: Optional[bool] # Nuevo campo
 
 class Virtuales(BaseModel):
     nombre: str
@@ -63,3 +67,11 @@ class User(BaseModel):
     nombre: str
     password: str
     rol: int
+
+class Temporizador(BaseModel):
+    timerActive: bool
+
+class TemporizadorUpdate(BaseModel):
+    estado: bool
+    timerActive: bool
+    

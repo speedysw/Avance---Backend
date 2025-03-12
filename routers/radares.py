@@ -83,7 +83,9 @@ async def datos_radares(db: Session = Depends(get_db)):
             # Usar la relación radar:
             "nombre": sensor.radar.nombre,
             "volumen": sensor.radar.volumen,
-            "umbral": sensor.radar.umbral
+            "umbral": sensor.radar.umbral,
+            "duration": sensor.radar.duration,
+            "timerActive": sensor.radar.timerActive
         }
         for sensor in ultimos_sensores
     ]
@@ -188,16 +190,12 @@ async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final
     response.headers["Content-Disposition"] = "attachment; filename=datos.csv"
     return response
 
-
-
 #--------------------------#
 #---- ENDPOINTS - POST ----#
 #--------------------------#
 
-
 @router.post("/agregar_radares")
 async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db),  current_user: models.User = Depends(require_role(1))):
-
     # Verifica si el radar ya existe
     db_radar = db.query(models.Radar).filter(models.Radar.id_radar == radar.id_radar).first()
     if not db_radar:
@@ -220,13 +218,16 @@ async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db
             new_nombre = "Default Radar"
             new_volumen = 100.0  # Valor por defecto
             new_umbral = 0.0
-        
+            new_duration = 0
+            new_timerActive = False 
         # Crea el nuevo Radar utilizando los valores determinados
         db_radar = models.Radar(
             id_radar=radar.id_radar,
             nombre=new_nombre,
             volumen=new_volumen,
-            umbral=new_umbral
+            umbral=new_umbral,
+            duration=new_duration,
+            timerActive=new_timerActive
         )
         db.add(db_radar)
         db.commit()
@@ -248,9 +249,42 @@ async def create_radar(radar: schemas.RadarRequest, db: Session = Depends(get_db
     # Retorna la respuesta con el radar y su historial
     return db_radar
 
+@router.put("/switch/temporizador/{id_radar}")
+async def change_switch_temp(id_radar: str, data: schemas.TemporizadorUpdate, db: Session = Depends(get_db)):
+    # Buscar el último estado del radar en la BD
+    db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
+    if db_radar is None:
+        raise HTTPException(status_code=404, detail=f"No se encontró el radar con id {id_radar}")
+    db_radar.timerActive = data.timerActive
+    # Actualizar el estado que corresponda
+    # ...
+    db.add(db_radar)
+    db.commit()
+    db.refresh(db_radar)
+
+    # Preparar mensaje MQTT
+    payload = json.dumps({"id_sensor": id_radar, "estado": data.estado})
+
+    topic = MQTT_TOPIC_CONTROL_BASE + "/" + id_radar
+    print(topic)
+    try:
+        # Publicar mensaje en el tópico MQTT exclusivo para el radar
+        publish_message(topic, payload)
+        return {
+            "message": "Switch changed",
+            "estado": db_radar.estado,
+            "mqtt_payload": payload,
+            "topic": topic
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar mensaje MQTT: {str(e)}"
+        )
+
+
 @router.post("/switch/{id_radar}")
 async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session = Depends(get_db)):
-
     # Buscar el último estado del radar en la BD
     db_radar = (
         db.query(models.HistorialRadar)
@@ -260,7 +294,6 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
     )
 
     if db_radar is None:
-        
         return {"error": f"No se encontraron datos para el radar {id_radar}"}
     nuevo_historial = models.HistorialRadar(
         id_radar=id_radar,
@@ -271,6 +304,7 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
     db.add(nuevo_historial)
     db.commit()
     db.refresh(nuevo_historial)
+
     # Preparar mensaje MQTT
     payload = json.dumps({"id_sensor": id_radar, "estado": data.estado})
 
@@ -307,6 +341,8 @@ async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = 
     db_radar.nombre = radar.nombre
     db_radar.volumen = radar.volumen
     db_radar.umbral = radar.umbral
+    db_radar.timerActive = radar.timerActive
+    db_radar.duration = radar.duration
     db.add(db_radar)
     db.commit()
     db.refresh(db_radar)
@@ -333,6 +369,8 @@ async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = 
             "nombre": radar_db.nombre,
             "volumen": radar_db.volumen,
             "umbral": radar_db.umbral,
+            "duration": radar_db.duration,
+            "timerActive": radar_db.timerActive,
             "combustible": historial.combustible,
             "estado": historial.estado,
             "fecha": historial.fecha.isoformat() if historial.fecha else None
@@ -343,11 +381,53 @@ async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = 
             "nombre": db_radar.nombre,
             "volumen": db_radar.volumen,
             "umbral": db_radar.umbral,
+            "duration": radar_db.duration,
+            "timerActive": radar_db.timerActive,
             "combustible": None,
             "estado": None,
             "fecha": None
         }
     
+    return response_data
+
+@router.put("/temporizador/{id_radar}")
+async def temporizador_activate(
+    id_radar: str,
+    radar: schemas.Temporizador,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(1))
+):
+    db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
+    if db_radar is None:
+        raise HTTPException(status_code=404, detail=f"No se encontró el radar con id {id_radar}")
+
+    # Actualiza las propiedades del temporizador
+    db_radar.timerActive = radar.timerActive
+    if hasattr(radar, 'duration') and radar.duration is not None:
+        db_radar.duration = radar.duration
+
+    # Guarda los cambios y refresca el objeto para obtener los valores actualizados
+    db.commit()
+    db.refresh(db_radar)
+
+    result = db.query(models.Radar, models.HistorialRadar).join(
+        models.HistorialRadar, models.Radar.id_radar == models.HistorialRadar.id_radar
+    ).filter(models.Radar.id_radar == id_radar).order_by(models.HistorialRadar.fecha.desc()).first()
+
+    if result:
+        radar_db, historial = result
+        response_data = {
+            "id_radar": radar_db.id_radar,
+            "nombre": radar_db.nombre,
+            "volumen": radar_db.volumen,
+            "umbral": radar_db.umbral,
+            "duration": radar_db.duration,
+            "timerActive": radar_db.timerActive,
+            "combustible": historial.combustible,
+            "estado": historial.estado,
+            "fecha": historial.fecha.isoformat() if historial.fecha else None
+        }
+    # Retorna el radar actualizado (usando el esquema de salida)
     return response_data
 
 #----------------------------#
