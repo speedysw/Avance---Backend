@@ -10,7 +10,9 @@ class Radar(Base):
     volumen = Column(Float, nullable=True) 
     umbral = Column(Float, nullable=True)
     duration = Column(Integer, nullable=True)
-    timerActive = Column(Boolean, nullable=False)
+    timerActive = Column(Boolean, nullable=True)
+    hora_termino = Column(DateTime(timezone=True), nullable=False)
+
     # Relación con RadarHistorico
     historico = relationship("HistorialRadar", back_populates="radar", cascade="all, delete") 
 

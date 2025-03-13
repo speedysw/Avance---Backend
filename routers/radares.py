@@ -190,6 +190,11 @@ async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final
     response.headers["Content-Disposition"] = "attachment; filename=datos.csv"
     return response
 
+@router.get("/get_hora/{id_radar}")
+async def get_hora_termino(id_radar: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(1))):
+    db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
+    return db_radar.hora_termino
+
 #--------------------------#
 #---- ENDPOINTS - POST ----#
 #--------------------------#
@@ -298,8 +303,6 @@ async def change_switch_temp(id_radar: str, data: schemas.TemporizadorUpdate, db
             detail=f"Error al enviar mensaje MQTT: {str(e)}"
         )
 
-
-
 @router.post("/switch/{id_radar}")
 async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session = Depends(get_db)):
     # Buscar el último estado del radar en la BD
@@ -346,6 +349,19 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
 #-------------------------#
 #---- ENDPOINTS - PUT ----#
 #-------------------------#
+
+@router.put("/temporizador/termino/{id_radar}")
+async def hora_termino(id_radar: str, termino: schemas.TerminoTemporizador, db: Session = Depends(get_db)):
+    db_radar = db.query(models.Radar).filter(models.Radar.id_radar == id_radar).first()
+    if db_radar is None:
+        raise HTTPException(status_code=404, detail=f"No se encontro radar con la id {id_radar}")
+    
+    db_radar.hora_termino = termino.hora_termino
+    db.add(db_radar)
+    db.commit()
+    db.refresh(db_radar)
+    return db_radar
+
 
 @router.put("/radares/{id_radar}")
 async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(1))):

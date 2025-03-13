@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 class HistorialRadarResponse(BaseModel):
     id_radar: str
@@ -75,3 +76,5 @@ class TemporizadorUpdate(BaseModel):
     estado: bool
     timerActive: bool
     
+class TerminoTemporizador(BaseModel):
+    hora_termino: Optional[datetime] = None
