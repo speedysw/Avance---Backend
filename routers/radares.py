@@ -414,8 +414,8 @@ async def update_radar(id_radar: str, radar: schemas.RadarUpdate, db: Session = 
             "nombre": db_radar.nombre,
             "volumen": db_radar.volumen,
             "umbral": db_radar.umbral,
-            "duration": radar_db.duration,
-            "timerActive": radar_db.timerActive,
+            "duration": db_radar.duration,
+            "timerActive": db_radar.timerActive,
             "combustible": None,
             "estado": None,
             "fecha": None

@@ -44,7 +44,9 @@ async def global_exception_handler(request: Request, call_next):
     try:
         return await call_next(request)
     except Exception as exc:
-        # Registrar error
-        return JSONResponse(status_code=500, content={"detail": "Error interno del servidor"})
-
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Error interno del servidor"},
+            headers={"Access-Control-Allow-Origin": "*"}  # Agrega la cabecera de CORS
+        )
 

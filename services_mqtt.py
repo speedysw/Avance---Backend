@@ -92,7 +92,8 @@ def process_message(payload: MQTTMessage):
         db.rollback()
     finally:
         db.close()
-
+# eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbCI6MSwidHlwZSI6ImFjY2VzcyIsImV4cCI6MTc0MjIzNDgzNH0.HmlIuNk7YEqmBHB_qZhMPl_r4Mczqd9SCxKYXOWngUw
+# eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbCI6MSwidHlwZSI6ImFjY2VzcyIsImV4cCI6MTc0MjIzNTMyMn0.AQnCyZbiAcnKrF1bOn9MuYjOp2vY4DSAGr175ymX4oA
 def init_mqtt():
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
