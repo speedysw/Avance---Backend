@@ -157,8 +157,11 @@ async def datos_radares(db: Session = Depends(get_db)):
     ]
 
 @router.get("/export/csv")
-async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final: Optional[str] = None,db: Session = Depends(get_db)):
-    query = db.query(models.HistorialRadar).filter(models.HistorialRadar.id_radar == radar)
+async def exportar_csv(radar: Optional[str] = None, fecha_inicio: Optional[str] = None, fecha_final: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.HistorialRadar)
+    
+    if radar:
+        query = query.filter(models.HistorialRadar.id_radar == radar)
 
     if fecha_inicio and fecha_final:
         try:
@@ -166,22 +169,18 @@ async def exportar_csv(radar: str,fecha_inicio: Optional[str] = None,fecha_final
             end_dt = datetime.strptime(fecha_final, "%Y-%m-%d") + timedelta(days=1)
         except ValueError:
             return {"error": "El formato de las fechas debe ser YYYY-MM-DD"}
-
         query = query.filter(
-            and_(
-                models.HistorialRadar.fecha >= start_dt,
-                models.HistorialRadar.fecha < end_dt
-            )
+            models.HistorialRadar.fecha >= start_dt,
+            models.HistorialRadar.fecha < end_dt
         )
-
-    datos = query.all()
+    
     datos = query.all()
     data_list = [d.__dict__ for d in datos]
     # Eliminar atributos internos (como _sa_instance_state)
     for item in data_list:
         item.pop("_sa_instance_state", None)
     df = pd.DataFrame(data_list)
-
+    df['estado'] = df['estado'].map({True: "encendido", False: "apagado"})
     
     # Escribir en un objeto BytesIO
     csv_stream = StringIO()

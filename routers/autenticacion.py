@@ -163,7 +163,7 @@ def refresh(request_data: RefreshRequest, db: Session = Depends(get_db)):
             logger.error("El token no es de tipo refresh. Payload: %s", payload)
             raise HTTPException(status_code=401, detail="El token no es de tipo refresh")
         username = payload.get("sub")
-        print(username)
+        user = get_user_by_username(db, username)
         if username is None:
             logger.error("Token inválido: no contiene 'sub'. Payload: %s", payload)
             raise HTTPException(status_code=401, detail="Token inválido (sin sub)")
@@ -174,7 +174,7 @@ def refresh(request_data: RefreshRequest, db: Session = Depends(get_db)):
     
     # Generar un nuevo access token
     new_access_token = create_access_token(
-        data={"sub": username,  "type": "access"},
+        data={"sub": user.username, "rol": user.rol, "type": "access"},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {
