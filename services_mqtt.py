@@ -57,7 +57,6 @@ def process_message(payload: MQTTMessage):
                 new_umbral = pendiente_virtual.umbral
                 pendiente_virtual.id_vinculacion = payload.id_sensor
                 pendiente_virtual.vinculacion = True
-                db.add(pendiente_virtual)
                 db.commit()
             else:
                 new_nombre = "Default Radar"

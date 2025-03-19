@@ -314,6 +314,7 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
 
     if db_radar is None:
         return {"error": f"No se encontraron datos para el radar {id_radar}"}
+    
     nuevo_historial = models.HistorialRadar(
         id_radar=id_radar,
         combustible=db_radar.combustible,  # o algún valor si es necesario
@@ -335,7 +336,7 @@ async def change_switch(id_radar: str, data: schemas.EstadoUpdate, db: Session =
         publish_message(topic, payload)
         return {
             "message": "Switch changed",
-            "estado": db_radar.estado,
+            "estado": nuevo_historial.estado,
             "mqtt_payload": payload,
             "topic": topic
         }

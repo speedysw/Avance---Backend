@@ -38,7 +38,8 @@ class Virtual(Base):
 
 class User(Base):
     __tablename__="usuario"
-    username = Column(String(100), primary_key=True)
+    id_usuario = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100))
     nombre = Column(String(100))
     password = Column(String(100))
     rol = Column(Integer, default=0)

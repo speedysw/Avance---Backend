@@ -31,8 +31,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                     (models.HistorialRadar.id_radar == subquery.c.id_radar)
                     & (models.HistorialRadar.fecha == subquery.c.max_fecha),
                 )
-                .join(models.HistorialRadar.radar)  # para cargar la relación 'radar'
-                .all()
+            .join(models.Radar, models.HistorialRadar.id_radar == models.Radar.id_radar)                .all()
             )
 
             cadena_datos = [

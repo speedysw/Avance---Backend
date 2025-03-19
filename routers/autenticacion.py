@@ -162,11 +162,16 @@ def refresh(request_data: RefreshRequest, db: Session = Depends(get_db)):
         if payload.get("type") != "refresh":
             logger.error("El token no es de tipo refresh. Payload: %s", payload)
             raise HTTPException(status_code=401, detail="El token no es de tipo refresh")
+        
         username = payload.get("sub")
-        user = get_user_by_username(db, username)
         if username is None:
             logger.error("Token inválido: no contiene 'sub'. Payload: %s", payload)
             raise HTTPException(status_code=401, detail="Token inválido (sin sub)")
+        
+        user = get_user_by_username(db, username)
+        if user is None:
+            logger.error("Usuario no encontrado para el token. Username: %s", username)
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
     except JWTError as e:
         # Registra el error con todos sus detalles
         logger.error("Error al decodificar el token: %s", e, exc_info=True)
