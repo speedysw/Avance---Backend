@@ -4,5 +4,7 @@
 
 # Ignorar directorios de entornos virtuales comunes
 venv/
+evn/
 .env_virtual/
 .virtualenv/
+__pycache__/

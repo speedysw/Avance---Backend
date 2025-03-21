@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from routers import radares, virtuales, websocket, autenticacion
 from services_mqtt import init_mqtt
+from BD.init_db import crear_usuario_admin
 
 app = FastAPI()
 
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 models.Base.metadata.create_all(bind=engine)
+crear_usuario_admin()
 
 app.include_router(radares.router)
 app.include_router(virtuales.router)

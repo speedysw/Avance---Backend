@@ -11,7 +11,7 @@ class Radar(Base):
     umbral = Column(Float, nullable=True)
     duration = Column(Integer, nullable=True)
     timerActive = Column(Boolean, nullable=True)
-    hora_termino = Column(DateTime(timezone=True), nullable=False)
+    hora_termino = Column(DateTime(timezone=True), nullable=True)
 
     # Relación con RadarHistorico
     historico = relationship("HistorialRadar", back_populates="radar", cascade="all, delete") 
@@ -39,7 +39,7 @@ class Virtual(Base):
 class User(Base):
     __tablename__="usuario"
     id_usuario = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(100))
+    username = Column(String(100), unique=True, nullable=False)
     nombre = Column(String(100))
     password = Column(String(100))
     rol = Column(Integer, default=0)

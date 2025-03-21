@@ -5,6 +5,10 @@ from BD.database import SessionLocal
 import logging, json
 import paho.mqtt.client as mqtt
 from pydantic import BaseModel, ValidationError
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class MQTTMessage(BaseModel):
     id_sensor: str
@@ -13,7 +17,8 @@ class MQTTMessage(BaseModel):
 
 logger = logging.getLogger(__name__)
 
-MQTT_BROKER = "192.168.0.110"
+
+MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = 1883
 MQTT_TOPIC_CONTROL_BASE = "generador/control"
 MQTT_TOPIC_COMBUSTIBLE = "generador/combustible"

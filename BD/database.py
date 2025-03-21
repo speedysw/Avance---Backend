@@ -4,9 +4,20 @@ from sqlalchemy.orm import sessionmaker
 from typing import List
 from fastapi import HTTPException
 from contextlib import contextmanager
+from dotenv import load_dotenv
+import os 
+from BD.crear_bd import create_bd
 
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env.local')
+load_dotenv(dotenv_path)
+host = os.getenv("DATABASE_HOST_LOCAL")
+port = os.getenv("DATABASE_PORT")
+user = os.getenv("DATABASE_USER")
+password = os.getenv("DATABASE_PASS")
+database = os.getenv("DATABASE_NAME")
 
-SQL_DB_URL = 'postgresql://postgres:rollins12@localhost:5432/Prueba'
+create_bd()
+SQL_DB_URL =  f"postgresql://{user}:{password}@{host}:{port}/{database}"
 engine = create_engine(SQL_DB_URL)
 SessionLocal = sessionmaker(bind=engine,autocommit=False,autoflush=False)
 Base = declarative_base()
